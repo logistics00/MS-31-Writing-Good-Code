@@ -28,6 +28,19 @@ class Post {
       return result;
     }
   }
+
+  async delete() {
+    if (!this.id) {
+      return;
+    } else {
+      const result = await db
+        .getDb()
+        .collection('posts')
+        .deleteOne({ _id: this.id });
+
+      return result;
+    }
+  }
 }
 
 module.exports = Post;
