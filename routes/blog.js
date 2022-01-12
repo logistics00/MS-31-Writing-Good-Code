@@ -2,6 +2,7 @@ const express = require('express');
 const mongodb = require('mongodb');
 
 const db = require('../data/database');
+const Post = require('../models/Post');
 
 const ObjectId = mongodb.ObjectId;
 const router = express.Router();
@@ -57,12 +58,8 @@ router.post('/posts', async function (req, res) {
     return; // or return res.redirect('/admin'); => Has the same effect
   }
 
-  const newPost = {
-    title: enteredTitle,
-    content: enteredContent,
-  };
-
-  await db.getDb().collection('posts').insertOne(newPost);
+  const post = new Post(enteredTitle, enteredContent);
+  await post.save();
 
   res.redirect('/admin');
 });
@@ -95,9 +92,9 @@ router.get('/posts/:id/edit', async function (req, res) {
 });
 
 router.post('/posts/:id/edit', async function (req, res) {
+  const postId = new ObjectId(req.params.id);
   const enteredTitle = req.body.title;
   const enteredContent = req.body.content;
-  const postId = new ObjectId(req.params.id);
 
   if (
     !enteredTitle ||
