@@ -50,9 +50,16 @@ async function createPost(req, res) {
   res.redirect('/admin');
 }
 
-async function getSinglePost(req, res) {
-  //  const postId = new ObjectId(req.params.id);
-  const post = new Post(null, null, req.params.id);
+async function getSinglePost(req, res, next) {
+  // Error handling within async function because of Express failure
+  let post;
+  try {
+    const post = new Post(null, null, req.params.id);
+  } catch (error) {
+    // next(error);
+    return res.render('404');
+  }
+
   await post.fetch();
 
   if (!post.title || !post.content) {
