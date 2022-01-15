@@ -1,5 +1,4 @@
-const bcrypt = require('bcryptjs');
-const db = require('../data/database');
+const User = require('../models/user');
 
 function getSignup(req, res) {
   let sessionInputData = req.session.inputData;
@@ -65,12 +64,10 @@ async function signup(req, res) {
     return;
   }
 
-  const existingUser = await db
-    .getDb()
-    .collection('users')
-    .findOne({ email: enteredEmail });
+  const newUser = new User(enteredEmail, enteredPassword);
+  const userExistsAlready = await newUser.existsAlready();
 
-  if (existingUser) {
+  if (userExistsAlready) {
     req.session.inputData = {
       hasError: true,
       message: 'User exists already!',
@@ -84,14 +81,7 @@ async function signup(req, res) {
     return;
   }
 
-  const hashedPassword = await bcrypt.hash(enteredPassword, 12);
-
-  const user = {
-    email: enteredEmail,
-    password: hashedPassword,
-  };
-
-  await db.getDb().collection('users').insertOne(user);
+  await newUser.signup();
 
   res.redirect('/login');
 }
@@ -101,10 +91,8 @@ async function login(req, res) {
   const enteredEmail = userData.email;
   const enteredPassword = userData.password;
 
-  const existingUser = await db
-    .getDb()
-    .collection('users')
-    .findOne({ email: enteredEmail });
+  const newUser = new User(enteredEmail, enteredPassword);
+  const existingUser = await newUser.getUserWithSameEmail();
 
   if (!existingUser) {
     req.session.inputData = {
@@ -119,10 +107,7 @@ async function login(req, res) {
     return;
   }
 
-  const passwordsAreEqual = await bcrypt.compare(
-    enteredPassword,
-    existingUser.password
-  );
+  const passwordsAreEqual = await newUser.login(existingUser.password);
 
   if (!passwordsAreEqual) {
     req.session.inputData = {
