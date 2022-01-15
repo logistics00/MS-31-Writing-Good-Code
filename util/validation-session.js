@@ -1,6 +1,6 @@
 function getSessionErrorData(req, defaultValues) {
   let sessionInputData = req.session.inputData;
-
+  console.log(sessionInputData);
   if (!sessionInputData) {
     sessionInputData = {
       hasError: false,

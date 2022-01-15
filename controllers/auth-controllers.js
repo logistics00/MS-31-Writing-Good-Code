@@ -1,38 +1,28 @@
+const validationSession = require('../util/validation-session');
+const validation = require('../util/validation');
 const User = require('../models/user');
 
 function getSignup(req, res) {
-  let sessionInputData = req.session.inputData;
-
-  if (!sessionInputData) {
-    sessionInputData = {
-      hasError: false,
-      email: '',
-      confirmEmail: '',
-      password: '',
-    };
-  }
-
-  req.session.inputData = null;
+  console.log('getSignup');
+  const sessionErrorData = validationSession.getSessionErrorData(req, {
+    email: '',
+    confirmEmail: '',
+    password: '',
+  });
 
   res.render('signup', {
-    inputData: sessionInputData,
+    inputData: sessionErrorData,
   });
 }
 
 function getLogin(req, res) {
-  let sessionInputData = req.session.inputData;
+  const sessionErrorData = validationSession.getSessionErrorData(req, {
+    email: '',
+    password: '',
+  });
 
-  if (!sessionInputData) {
-    sessionInputData = {
-      hasError: false,
-      email: '',
-      password: '',
-    };
-  }
-
-  req.session.inputData = null;
   res.render('login', {
-    inputData: sessionInputData,
+    inputData: sessionErrorData,
   });
 }
 
@@ -43,24 +33,25 @@ async function signup(req, res) {
   const enteredPassword = userData.password;
 
   if (
-    !enteredEmail ||
-    !enteredConfirmEmail ||
-    !enteredPassword ||
-    enteredPassword.trim().length < 6 ||
-    enteredEmail !== enteredConfirmEmail ||
-    !enteredEmail.includes('@')
+    !validation.userCredentialsAreValid(
+      enteredEmail,
+      enteredConfirmEmail,
+      enteredPassword
+    )
   ) {
-    req.session.inputData = {
-      hasError: true,
-      message: 'Invalid input - please check your data.',
-      email: enteredEmail,
-      confirmEmail: enteredConfirmEmail,
-      password: enteredPassword,
-    };
+    validationSession.flashErrorsToSession(
+      req,
+      {
+        message: 'Invalid input - please check your data.',
+        email: enteredEmail,
+        confirmEmail: enteredConfirmEmail,
+        password: enteredPassword,
+      },
+      function () {
+        res.redirect('/signup');
+      }
+    );
 
-    req.session.save(function () {
-      res.redirect('/signup');
-    });
     return;
   }
 
@@ -68,16 +59,19 @@ async function signup(req, res) {
   const userExistsAlready = await newUser.existsAlready();
 
   if (userExistsAlready) {
-    req.session.inputData = {
-      hasError: true,
-      message: 'User exists already!',
-      email: enteredEmail,
-      confirmEmail: enteredConfirmEmail,
-      password: enteredPassword,
-    };
-    req.session.save(function () {
-      res.redirect('/signup');
-    });
+    validationSession.flashErrorsToSession(
+      req,
+      {
+        message: 'User already exists.',
+        email: enteredEmail,
+        confirmEmail: enteredConfirmEmail,
+        password: enteredPassword,
+      },
+      function () {
+        res.redirect('/signup');
+      }
+    );
+
     return;
   }
 
@@ -95,34 +89,43 @@ async function login(req, res) {
   const existingUser = await newUser.getUserWithSameEmail();
 
   if (!existingUser) {
-    req.session.inputData = {
-      hasError: true,
-      message: 'Could not log you in - please check your credentials!',
-      email: enteredEmail,
-      password: enteredPassword,
-    };
-    req.session.save(function () {
-      res.redirect('/login');
-    });
+    validationSession.flashErrorsToSession(
+      req,
+      {
+        message: 'Could not log you in - please check your credentials!',
+        email: enteredEmail,
+        password: enteredPassword,
+      },
+      function () {
+        res.redirect('/login');
+      }
+    );
+
     return;
   }
 
   const passwordsAreEqual = await newUser.login(existingUser.password);
 
   if (!passwordsAreEqual) {
-    req.session.inputData = {
-      hasError: true,
-      message: 'Could not log you in - please check your credentials!',
-      email: enteredEmail,
-      password: enteredPassword,
-    };
-    req.session.save(function () {
-      res.redirect('/login');
-    });
+    validationSession.flashErrorsToSession(
+      req,
+      {
+        message: 'Could not log you in - please check your credentials!',
+        email: enteredEmail,
+        password: enteredPassword,
+      },
+      function () {
+        res.redirect('/login');
+      }
+    );
+
     return;
   }
 
-  req.session.user = { id: existingUser._id, email: existingUser.email };
+  req.session.user = {
+    id: existingUser._id,
+    email: existingUser.email,
+  };
   req.session.isAuthenticated = true;
   req.session.save(function () {
     res.redirect('/admin');
