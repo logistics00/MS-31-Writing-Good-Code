@@ -3,7 +3,6 @@ const validation = require('../util/validation');
 const User = require('../models/user');
 
 function getSignup(req, res) {
-  console.log('getSignup');
   const sessionErrorData = validationSession.getSessionErrorData(req, {
     email: '',
     confirmEmail: '',
